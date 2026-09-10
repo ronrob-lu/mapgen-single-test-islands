@@ -2,7 +2,7 @@
 
 A Minetest/Luanti mod that generates a specific island map configuration when the world starts! 🌊
 
-> ⚠️ **GitHub Note**: This mod is still in active development! Expect changes and exciting updates. 🚧
+> ⚠️ **GitHub Note**: This mod is still in testing, it's not intended for a a real gameplay, although you can do this! 🚧
 
 ## ✨ Features
 
