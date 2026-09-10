@@ -1,7 +1,7 @@
 -- Set v7 mapgen so biomes/decorations are registered properly by default mod.
 minetest.set_mapgen_setting("mg_name", "v7", true)
 minetest.set_mapgen_setting("mg_flags", "nocaves, nodungeons, nodecorations", true)
-minetest.set_mapgen_setting("mg_flags", "nolight", false)
+minetest.set_mapgen_setting("mg_flags", "nolight", true)
 minetest.set_mapgen_setting("water_level", "0", true)
 
 -- Island spacing increased and radius increased by ~20%
@@ -137,9 +137,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
         voxelmanip:set_data(data)
     end
 
-    voxelmanip:set_lighting({day=0, night=0})
-    voxelmanip:calc_lighting(emin, emax)
+    voxelmanip:calc_lighting()
     voxelmanip:update_liquids()
-    voxelmanip:write_to_map(false)
+    voxelmanip:write_to_map()
     voxelmanip:update_map()
 end)
