@@ -1,5 +1,6 @@
 -- Set v7 mapgen so biomes/decorations are registered properly by default mod.
 minetest.set_mapgen_setting("mg_name", "v7", true)
+minetest.set_mapgen_setting("mg_flags", "nocaves, nodungeons, nodecorations", true)
 minetest.set_mapgen_setting("mg_flags", "nolight", false)
 
 -- Get the content IDs for the nodes used.
@@ -83,7 +84,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
                     local dx = x - ic.x
                     local dz = z - ic.z
                     local dist = math.sqrt(dx*dx + dz*dz)
-                    if dist <= ic.r then
+                    if dist <= ic.r * 1.5 then
                         local ratio = dist / ic.r
                         if ratio < best_dist_ratio then
                             best_dist_ratio = ratio
@@ -96,10 +97,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
                     local density_noise = nvals_terrain[ni]
 
                     -- Gradient: highest point around y=25, goes to 0 at water (y=1)
-                    local density_gradient = (5 - y) / 30.0
+                    local density_gradient = (20 - y) / 20.0
 
                     -- Penalize density heavily as we get further from center to create a conical/island shape
-                    local shape_penalty = (best_dist_ratio * best_dist_ratio) * 1.5
+                    local shape_penalty = (best_dist_ratio * best_dist_ratio) * 2.5
 
                     local density = density_noise + density_gradient - shape_penalty
 
