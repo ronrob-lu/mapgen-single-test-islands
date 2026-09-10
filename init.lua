@@ -15,28 +15,40 @@ minetest.register_on_mods_loaded(function()
             local wx = pos.x
             local wz = pos.z
 
-            if wx >= 20 and wx <= 120 and wz >= 20 and wz <= 120 then
-                -- Island 1: Grassland dunes (left), Coniferous forest dunes (right)
-                if wx < 70 then
-                    return minetest.registered_biomes["grassland_dunes"] or orig_calc(heat, humid, pos)
+            -- Island 1 (x=100, z=100): Grassland (left), Coniferous (right)
+            if wx >= 40 and wx <= 160 and wz >= 40 and wz <= 160 then
+                if wx < 100 then
+                    return orig_calc(50, 50, pos) -- Grassland (med heat, med humid)
                 else
-                    return minetest.registered_biomes["coniferous_forest_dunes"] or orig_calc(heat, humid, pos)
+                    return orig_calc(25, 80, pos) -- Coniferous (low heat, high humid)
                 end
-            elseif wx >= -90 and wx <= -20 and wz >= 20 and wz <= 90 then
-                -- Island 2: Savanna shore
-                return minetest.registered_biomes["savanna_shore"] or orig_calc(heat, humid, pos)
-            elseif wx >= -70 and wx <= -20 and wz >= -70 and wz <= -20 then
-                -- Island 3: Deciduous forest
-                return minetest.registered_biomes["deciduous_forest"] or orig_calc(heat, humid, pos)
-            elseif wx >= 20 and wx <= 50 and wz >= -50 and wz <= -20 then
-                -- Island 4: Savanna
-                return minetest.registered_biomes["savanna"] or orig_calc(heat, humid, pos)
+            -- Island 2 (x=-90, z=90): Savanna shore
+            elseif wx >= -150 and wx <= -30 and wz >= 30 and wz <= 150 then
+                return orig_calc(85, 20, pos) -- Savanna (high heat, low humid)
+            -- Island 3 (x=-80, z=-80): Deciduous forest
+            elseif wx >= -130 and wx <= -30 and wz >= -130 and wz <= -30 then
+                return orig_calc(50, 80, pos) -- Deciduous (med heat, high humid)
+            -- Island 4 (x=80, z=-80): Savanna
+            elseif wx >= 40 and wx <= 120 and wz >= -120 and wz <= -40 then
+                return orig_calc(85, 20, pos) -- Savanna (high heat, low humid)
             end
 
             return orig_calc(heat, humid, pos)
         end
     end
 end)
+
+local np_terrain = {
+    offset = 0,
+    scale = 1,
+    spread = {x = 96, y = 48, z = 96},
+    seed = 5900033,
+    octaves = 5,
+    persist = 0.63,
+    lacunarity = 2.0,
+}
+local nobj_terrain = nil
+local nvals_terrain = {}
 
 -- Localise data buffer table outside the loop
 local data = {}
@@ -46,64 +58,52 @@ minetest.register_on_generated(function(minp, maxp, seed)
     local area = VoxelArea:new{MinEdge = emin, MaxEdge = emax}
     voxelmanip:get_data(data)
 
+    -- Island spacing increased and radius increased by ~20%
     local island_centers = {
-        {id=1, x=70, z=70, r=50, name="Grassland/Coniferous"},
-        {id=2, x=-55, z=55, r=35, name="Savanna shore"},
-        {id=3, x=-45, z=-45, r=25, name="Deciduous forest"},
-        {id=4, x=35, z=-35, r=15, name="Savanna"}
+        {id=1, x=100, z=100, r=60, name="Grassland/Coniferous"},
+        {id=2, x=-90, z=90, r=42, name="Savanna shore"},
+        {id=3, x=-80, z=-80, r=30, name="Deciduous forest"},
+        {id=4, x=80, z=-80, r=18, name="Savanna"}
     }
 
-    local island_heightmap = {}
+    local sidelen = maxp.x - minp.x + 1
+    local permapdims3d = {x = sidelen, y = sidelen, z = sidelen}
+    nobj_terrain = nobj_terrain or minetest.get_perlin_map(np_terrain, permapdims3d)
+    nobj_terrain:get_3d_map_flat(minp, nvals_terrain)
 
-    for z = minp.z, maxp.z do
-        for x = minp.x, maxp.x do
-            local max_h = -1
-            local island_id = 0
-
-            for _, ic in ipairs(island_centers) do
-                local dx = x - ic.x
-                local dz = z - ic.z
-                local dist = math.sqrt(dx*dx + dz*dz)
-
-                -- Create square islands based on radius
-                if math.abs(dx) <= ic.r and math.abs(dz) <= ic.r then
-                    -- Smooth falloff for square
-                    local nx = math.abs(dx) / ic.r
-                    local nz = math.abs(dz) / ic.r
-                    local max_n = math.max(nx, nz)
-                    local shape = 1.0 - (max_n * max_n)
-
-                    if shape > 0 then
-                        island_id = ic.id
-                        local height_mult = 17
-                        if island_id == 2 then height_mult = 3 end -- lower for shore
-
-                        max_h = shape * height_mult
-                        -- Add slight noise
-                        local noise = math.sin(x/5.0) + math.cos(z/5.0)
-                        max_h = max_h + noise
-
-                        if max_h < 1 then max_h = 1 end
-                        if max_h > 17 then max_h = 17 end
-                    end
-                end
-            end
-
-            island_heightmap[z * 10000 + x] = {id = island_id, h = max_h}
-        end
-    end
-
-    -- Apply to terrain
+    local ni = 1
     for z = minp.z, maxp.z do
         for y = minp.y, maxp.y do
             local voxel_index = area:index(minp.x, y, z)
             for x = minp.x, maxp.x do
-                local info = island_heightmap[z * 10000 + x]
-                local island_id = info.id
-                local max_h = info.h
+                local island_id = 0
+                local best_dist_ratio = 1.0
+
+                for _, ic in ipairs(island_centers) do
+                    local dx = x - ic.x
+                    local dz = z - ic.z
+                    local dist = math.sqrt(dx*dx + dz*dz)
+                    if dist <= ic.r then
+                        local ratio = dist / ic.r
+                        if ratio < best_dist_ratio then
+                            best_dist_ratio = ratio
+                            island_id = ic.id
+                        end
+                    end
+                end
 
                 if island_id > 0 then
-                    if y <= math.floor(max_h) then
+                    local density_noise = nvals_terrain[ni]
+
+                    -- Gradient: highest point around y=25, goes to 0 at water (y=1)
+                    local density_gradient = (1 - y) / 25.0
+
+                    -- Penalize density heavily as we get further from center to create a conical/island shape
+                    local shape_penalty = (best_dist_ratio * best_dist_ratio) * 2.0
+
+                    local density = density_noise + density_gradient - shape_penalty
+
+                    if density > 0 then
                         data[voxel_index] = c_stone
                     elseif y <= 0 then
                         data[voxel_index] = c_water
@@ -121,6 +121,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
                     end
                 end
 
+                ni = ni + 1
                 voxel_index = voxel_index + 1
             end
         end
