@@ -1,7 +1,6 @@
 -- Set v7 mapgen so biomes/decorations are registered properly by default mod.
 minetest.set_mapgen_setting("mg_name", "v7", true)
-minetest.set_mapgen_setting("mg_flags", "nocaves, nodungeons, nodecorations", true)
-minetest.set_mapgen_setting("mg_flags", "nolight", true)
+minetest.set_mapgen_setting("mg_flags", "nocaves, nodungeons, nodecorations, nolight", true)
 minetest.set_mapgen_setting("water_level", "0", true)
 
 -- Island spacing increased and radius increased by ~20%
@@ -74,11 +73,11 @@ minetest.register_on_generated(function(minp, maxp, seed)
     nobj_terrain = nobj_terrain or minetest.get_perlin_map(np_terrain, permapdims3d)
     nobj_terrain:get_3d_map_flat(emin, nvals_terrain)
 
-    local ni = 1
-    for z = emin.z, emax.z do
-        for y = emin.y, emax.y do
-            local voxel_index = area:index(emin.x, y, z)
-            for x = emin.x, emax.x do
+    for z = minp.z, maxp.z do
+        for y = minp.y, maxp.y do
+            local voxel_index = area:index(minp.x, y, z)
+            local ni = (z - emin.z) * sidelen_y * sidelen_x + (y - emin.y) * sidelen_x + (minp.x - emin.x) + 1
+            for x = minp.x, maxp.x do
                 local island_id = 0
                 local best_dist_ratio = 1.0
 
@@ -137,8 +136,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
         voxelmanip:set_data(data)
     end
 
-    voxelmanip:calc_lighting()
-    voxelmanip:update_liquids()
+    voxelmanip:set_lighting({day = 15, night = 0})
     voxelmanip:write_to_map()
+    voxelmanip:update_liquids()
     voxelmanip:update_map()
 end)
