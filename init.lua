@@ -8,119 +8,157 @@ minetest.register_on_mods_loaded(function()
     c_stone = minetest.get_content_id("mapgen_stone")
     c_water = minetest.get_content_id("mapgen_water_source")
     c_air = minetest.get_content_id("air")
+
+    if biomegen then
+        local orig_calc = biomegen.calc_biome_from_noise
+        biomegen.calc_biome_from_noise = function(heat, humid, pos)
+            local wx = pos.x
+            local wz = pos.z
+
+            if wx >= 20 and wx <= 120 and wz >= 20 and wz <= 120 then
+                -- Island 1: Grassland dunes (left), Coniferous forest dunes (right)
+                if wx < 70 then
+                    return minetest.registered_biomes["grassland_dunes"] or orig_calc(heat, humid, pos)
+                else
+                    return minetest.registered_biomes["coniferous_forest_dunes"] or orig_calc(heat, humid, pos)
+                end
+            elseif wx >= -90 and wx <= -20 and wz >= 20 and wz <= 90 then
+                -- Island 2: Savanna shore
+                return minetest.registered_biomes["savanna_shore"] or orig_calc(heat, humid, pos)
+            elseif wx >= -70 and wx <= -20 and wz >= -70 and wz <= -20 then
+                -- Island 3: Deciduous forest
+                return minetest.registered_biomes["deciduous_forest"] or orig_calc(heat, humid, pos)
+            elseif wx >= 20 and wx <= 50 and wz >= -50 and wz <= -20 then
+                -- Island 4: Savanna
+                return minetest.registered_biomes["savanna"] or orig_calc(heat, humid, pos)
+            end
+
+            return orig_calc(heat, humid, pos)
+        end
+    end
 end)
 
-local function get_2d_noise(n, x, z)
-    return math.sin(x / 10.0 + n) + math.cos(z / 10.0 - n)
-end
-
--- Localise data buffer table outside the loop, to be re-used for all
--- mapchunks, therefore minimising memory use.
+-- Localise data buffer table outside the loop
 local data = {}
 
 minetest.register_on_generated(function(minp, maxp, seed)
-    -- Only generate islands if the chunk is near 0,0
-    local is_island_area = not (minp.x > 160 or maxp.x < -160 or minp.z > 160 or maxp.z < -160)
-
-    local vm, emin, emax = minetest.get_mapgen_object("voxelmanip")
+    local voxelmanip, emin, emax = minetest.get_mapgen_object("voxelmanip")
     local area = VoxelArea:new{MinEdge = emin, MaxEdge = emax}
-    vm:get_data(data)
+    voxelmanip:get_data(data)
+
+    local island_centers = {
+        {id=1, x=70, z=70, r=50, name="Grassland/Coniferous"},
+        {id=2, x=-55, z=55, r=35, name="Savanna shore"},
+        {id=3, x=-45, z=-45, r=25, name="Deciduous forest"},
+        {id=4, x=35, z=-35, r=15, name="Savanna"}
+    }
 
     local island_heightmap = {}
 
-    if is_island_area then
-        -- pre-calculate heightmap and island shapes to apply
-        for z = minp.z, maxp.z do
-            for x = minp.x, maxp.x do
-                local r = math.sqrt(x*x + z*z)
-                local inner_r = 20 + 5 * get_2d_noise(1, x, z)
-                local outer_r = 75 + 10 * get_2d_noise(2, x, z)
+    for z = minp.z, maxp.z do
+        for x = minp.x, maxp.x do
+            local max_h = -1
+            local island_id = 0
 
-                local angle = math.atan2(z, x)
-                local abs_a = math.abs(angle)
-                local d_a1 = math.abs(abs_a - math.pi/4)
-                local d_a2 = math.abs(abs_a - 3*math.pi/4)
-                local dist_a = math.min(d_a1, d_a2)
-                local channel_width = 0.2 + 0.1 * get_2d_noise(3, x, z)
+            for _, ic in ipairs(island_centers) do
+                local dx = x - ic.x
+                local dz = z - ic.z
+                local dist = math.sqrt(dx*dx + dz*dz)
 
-                local island_id = 0
-                if r >= inner_r and r <= outer_r and dist_a >= channel_width then
-                    if angle > -math.pi/4 and angle <= math.pi/4 then island_id = 1
-                    elseif angle > math.pi/4 and angle <= 3*math.pi/4 then island_id = 2
-                    elseif angle > 3*math.pi/4 or angle <= -3*math.pi/4 then island_id = 3
-                    else island_id = 4 end
-                end
+                -- Create square islands based on radius
+                if math.abs(dx) <= ic.r and math.abs(dz) <= ic.r then
+                    -- Smooth falloff for square
+                    local nx = math.abs(dx) / ic.r
+                    local nz = math.abs(dz) / ic.r
+                    local max_n = math.max(nx, nz)
+                    local shape = 1.0 - (max_n * max_n)
 
-                local max_h = 0
-                if island_id > 0 then
-                    local n_dist = (r - inner_r) / (outer_r - inner_r)
-                    local shape = math.sin(n_dist * math.pi)
-                    max_h = 80 * shape -- Make it more like a mountain, less flat
+                    if shape > 0 then
+                        island_id = ic.id
+                        local height_mult = 17
+                        if island_id == 2 then height_mult = 3 end -- lower for shore
 
-                    local noise2d = get_2d_noise(4, x, z)
-                    max_h = max_h + noise2d * 5
-                    if max_h < 1 then max_h = 1 end
-                    if max_h > 80 then max_h = 80 end
-                end
+                        max_h = shape * height_mult
+                        -- Add slight noise
+                        local noise = math.sin(x/5.0) + math.cos(z/5.0)
+                        max_h = max_h + noise
 
-                -- store negative value if no island, just to be safe
-                if island_id == 0 then
-                    island_heightmap[z * 1000 + x] = {id = 0, h = -1}
-                else
-                    island_heightmap[z * 1000 + x] = {id = island_id, h = max_h}
+                        if max_h < 1 then max_h = 1 end
+                        if max_h > 17 then max_h = 17 end
+                    end
                 end
             end
+
+            island_heightmap[z * 10000 + x] = {id = island_id, h = max_h}
         end
     end
 
     -- Apply to terrain
     for z = minp.z, maxp.z do
         for y = minp.y, maxp.y do
-            local vi = area:index(minp.x, y, z)
+            local voxel_index = area:index(minp.x, y, z)
             for x = minp.x, maxp.x do
-                local island_id = 0
-                local max_h = -1
-
-                if is_island_area then
-                    local info = island_heightmap[z * 1000 + x]
-                    island_id = info.id
-                    max_h = info.h
-                end
+                local info = island_heightmap[z * 10000 + x]
+                local island_id = info.id
+                local max_h = info.h
 
                 if island_id > 0 then
                     if y <= math.floor(max_h) then
-                        data[vi] = c_stone
+                        data[voxel_index] = c_stone
                     elseif y <= 0 then
-                        data[vi] = c_water
+                        data[voxel_index] = c_water
                     else
-                        data[vi] = c_air
+                        data[voxel_index] = c_air
                     end
                 else
-                    -- Outside islands or channels between islands
                     -- Solid stone floor at y=-30
                     if y <= -30 then
-                        data[vi] = c_stone
+                        data[voxel_index] = c_stone
                     elseif y <= 0 then
-                        data[vi] = c_water
+                        data[voxel_index] = c_water
                     else
-                        data[vi] = c_air
+                        data[voxel_index] = c_air
                     end
                 end
 
-                vi = vi + 1
+                voxel_index = voxel_index + 1
             end
         end
     end
 
     -- Call biomegen to generate biomes, decorations, etc.
-    -- It will automatically call vm:set_data(data)
     if biomegen then
-        biomegen.generate_all(data, area, vm, minp, maxp, seed)
+        biomegen.generate_all(data, area, voxelmanip, minp, maxp, seed)
     else
-        vm:set_data(data)
+        voxelmanip:set_data(data)
     end
 
-    vm:calc_lighting()
-    vm:write_to_map()
-    vm:update_liquids()
+    voxelmanip:calc_lighting()
+    voxelmanip:write_to_map()
+    voxelmanip:update_liquids()
+
+    -- Place center structures
+    for _, ic in ipairs(island_centers) do
+        if ic.x >= minp.x and ic.x <= maxp.x and ic.z >= minp.z and ic.z <= maxp.z then
+            -- Find surface Y
+            local surface_y = -31000
+            for y = maxp.y, minp.y, -1 do
+                local node = minetest.get_node({x=ic.x, y=y, z=ic.z})
+                if node.name ~= "air" and node.name ~= "ignore" then
+                    surface_y = y
+                    break
+                end
+            end
+
+            if surface_y >= minp.y then
+                local pos = {x=ic.x, y=surface_y+1, z=ic.z}
+                minetest.set_node(pos, {name="default:meselamp"})
+
+                local sign_pos = {x=ic.x+1, y=surface_y+1, z=ic.z}
+                minetest.set_node(sign_pos, {name="default:sign_wall_steel", param2=2})
+                local meta = minetest.get_meta(sign_pos)
+                meta:set_string("text", ic.name)
+            end
+        end
+    end
 end)
