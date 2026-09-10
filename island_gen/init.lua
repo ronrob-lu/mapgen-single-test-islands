@@ -6,7 +6,6 @@ minetest.set_mapgen_setting("mg_name", "flat", true)
 minetest.set_mapgen_setting("mgflat_ground_level", "-30", true)
 -- Ensure water level is 0
 minetest.set_mapgen_setting("water_level", "0", true)
-minetest.set_mapgen_setting("mg_flags", "nolight", true)
 
 local c_stone, c_air, c_sand, c_dirt, c_grass, c_tree, c_leaves
 local random_biome_1_nodes = nil
