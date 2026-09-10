@@ -16,20 +16,20 @@ minetest.register_on_mods_loaded(function()
             local wz = pos.z
 
             -- Island 1 (x=100, z=100): Grassland (left), Coniferous (right)
-            if wx >= 40 and wx <= 160 and wz >= 40 and wz <= 160 then
+            if wx >= 0 and wx <= 200 and wz >= 0 and wz <= 200 then
                 if wx < 100 then
                     return orig_calc(50, 50, pos) -- Grassland (med heat, med humid)
                 else
                     return orig_calc(25, 80, pos) -- Coniferous (low heat, high humid)
                 end
             -- Island 2 (x=-90, z=90): Savanna shore
-            elseif wx >= -150 and wx <= -30 and wz >= 30 and wz <= 150 then
+            elseif wx >= -160 and wx <= -20 and wz >= 20 and wz <= 160 then
                 return orig_calc(85, 20, pos) -- Savanna (high heat, low humid)
             -- Island 3 (x=-80, z=-80): Deciduous forest
             elseif wx >= -130 and wx <= -30 and wz >= -130 and wz <= -30 then
                 return orig_calc(50, 80, pos) -- Deciduous (med heat, high humid)
             -- Island 4 (x=80, z=-80): Savanna
-            elseif wx >= 40 and wx <= 120 and wz >= -120 and wz <= -40 then
+            elseif wx >= 50 and wx <= 110 and wz >= -110 and wz <= -50 then
                 return orig_calc(85, 20, pos) -- Savanna (high heat, low humid)
             end
 
@@ -60,10 +60,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
 
     -- Island spacing increased and radius increased by ~20%
     local island_centers = {
-        {id=1, x=100, z=100, r=60, name="Grassland/Coniferous"},
-        {id=2, x=-90, z=90, r=42, name="Savanna shore"},
-        {id=3, x=-80, z=-80, r=30, name="Deciduous forest"},
-        {id=4, x=80, z=-80, r=18, name="Savanna"}
+        {id=1, x=100, z=100, r=100, name="Grassland/Coniferous"},
+        {id=2, x=-90, z=90, r=70, name="Savanna shore"},
+        {id=3, x=-80, z=-80, r=50, name="Deciduous forest"},
+        {id=4, x=80, z=-80, r=30, name="Savanna"}
     }
 
     local sidelen = maxp.x - minp.x + 1
@@ -96,7 +96,7 @@ minetest.register_on_generated(function(minp, maxp, seed)
                     local density_noise = nvals_terrain[ni]
 
                     -- Gradient: highest point around y=25, goes to 0 at water (y=1)
-                    local density_gradient = (1 - y) / 25.0
+                    local density_gradient = (17 - y) / 47.0
 
                     -- Penalize density heavily as we get further from center to create a conical/island shape
                     local shape_penalty = (best_dist_ratio * best_dist_ratio) * 2.0
@@ -155,8 +155,8 @@ minetest.register_on_generated(function(minp, maxp, seed)
                 local pos = {x=ic.x, y=surface_y+1, z=ic.z}
                 minetest.set_node(pos, {name="default:meselamp"})
 
-                local sign_pos = {x=ic.x+1, y=surface_y+1, z=ic.z}
-                minetest.set_node(sign_pos, {name="default:sign_wall_steel", param2=2})
+                local sign_pos = {x=ic.x, y=surface_y+2, z=ic.z}
+                minetest.set_node(sign_pos, {name="default:sign_wall_steel"})
                 local meta = minetest.get_meta(sign_pos)
                 meta:set_string("text", ic.name)
             end
