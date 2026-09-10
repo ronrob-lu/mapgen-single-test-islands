@@ -1,6 +1,6 @@
 -- Set v7 mapgen so biomes/decorations are registered properly by default mod.
 minetest.set_mapgen_setting("mg_name", "v7", true)
-minetest.set_mapgen_setting("mg_flags", "nolight", true)
+minetest.set_mapgen_setting("mg_flags", "nolight", false)
 
 -- Get the content IDs for the nodes used.
 local c_stone, c_water, c_air
