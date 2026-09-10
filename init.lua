@@ -136,6 +136,6 @@ minetest.register_on_generated(function(minp, maxp, seed)
 
     voxelmanip:set_lighting({day=0, night=0})
     voxelmanip:calc_lighting()
-    voxelmanip:write_to_map()
+    voxelmanip:write_to_map(false)
     voxelmanip:update_liquids()
 end)
