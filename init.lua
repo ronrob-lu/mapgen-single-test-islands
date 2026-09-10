@@ -1,7 +1,8 @@
 -- Set v7 mapgen so biomes/decorations are registered properly by default mod.
 minetest.set_mapgen_setting("mg_name", "v7", true)
-minetest.set_mapgen_setting("mg_flags", "nocaves, nodungeons", true)
+minetest.set_mapgen_setting("mg_flags", "nocaves, nodungeons, nodecorations", true)
 minetest.set_mapgen_setting("mg_flags", "nolight", false)
+minetest.set_mapgen_setting("water_level", "0", true)
 
 -- Island spacing increased and radius increased by ~20%
 local island_centers = {
