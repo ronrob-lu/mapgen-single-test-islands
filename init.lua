@@ -1,5 +1,5 @@
--- Set singlenode mapgen (air nodes only).
-minetest.set_mapgen_setting("mg_name", "singlenode", true)
+-- Set v7 mapgen so biomes/decorations are registered properly by default mod.
+minetest.set_mapgen_setting("mg_name", "v7", true)
 minetest.set_mapgen_setting("mg_flags", "nolight", true)
 
 -- Get the content IDs for the nodes used.
@@ -41,7 +41,7 @@ end)
 local np_terrain = {
     offset = 0,
     scale = 1,
-    spread = {x = 96, y = 48, z = 96},
+    spread = {x = 200, y = 100, z = 200},
     seed = 5900033,
     octaves = 5,
     persist = 0.63,
@@ -96,10 +96,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
                     local density_noise = nvals_terrain[ni]
 
                     -- Gradient: highest point around y=25, goes to 0 at water (y=1)
-                    local density_gradient = (17 - y) / 47.0
+                    local density_gradient = (5 - y) / 30.0
 
                     -- Penalize density heavily as we get further from center to create a conical/island shape
-                    local shape_penalty = (best_dist_ratio * best_dist_ratio) * 2.0
+                    local shape_penalty = (best_dist_ratio * best_dist_ratio) * 1.5
 
                     local density = density_noise + density_gradient - shape_penalty
 
@@ -152,10 +152,10 @@ minetest.register_on_generated(function(minp, maxp, seed)
             end
 
             if surface_y >= minp.y then
-                local pos = {x=ic.x, y=surface_y+1, z=ic.z}
+                local pos = {x=ic.x, y=surface_y, z=ic.z}
                 minetest.set_node(pos, {name="default:meselamp"})
 
-                local sign_pos = {x=ic.x, y=surface_y+2, z=ic.z}
+                local sign_pos = {x=ic.x, y=surface_y+1, z=ic.z}
                 minetest.set_node(sign_pos, {name="default:sign_wall_steel"})
                 local meta = minetest.get_meta(sign_pos)
                 meta:set_string("text", ic.name)
