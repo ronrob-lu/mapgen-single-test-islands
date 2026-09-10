@@ -9,7 +9,7 @@ A Minetest/Luanti mod that generates a specific island map configuration when th
 - 🗺️ Generates exactly 4 natural-looking islands centered around `0,0,0`
 - 📏 Water level is exactly at `0`
 - 🏝️ Maximum island width is approximately `150` blocks
-- ⛰️ Islands are less flat, generating more like mountains!
+- ⛰️ Islands are flatter, not generating like mountains!
 - 🏖️ Coastlines are approximately between `20` and `75` blocks from the center
 - 🌳 **Biome Distribution** handled seamlessly by `biomegen` to avoid random weird structures!
 - 🤿 No underwater structures or underground caves. Islands sit on a sea floor extending to depth `y=-30`.
