@@ -97,8 +97,9 @@ minetest.register_on_generated(function(minp, maxp, seed)
                 if island_id > 0 then
                     local density_noise = nvals_terrain[ni]
 
-                    -- Gradient: highest point around y=15, goes to 0 at water (y=1)
-                    local density_gradient = (12 - y) / 12.0
+                    -- Gradient: below water unchanged; above water y*2 makes gradient drop
+                    -- twice as fast, flattening island tops (cap ~y=6 instead of y=12).
+                    local density_gradient = (12 - (y > 0 and y * 2 or y)) / 12.0
 
                     -- Penalize density heavily as we get further from center to create a conical/island shape
                     local shape_penalty = (best_dist_ratio * best_dist_ratio) * 2.5
