@@ -67,16 +67,18 @@ minetest.register_on_generated(function(minp, maxp, seed)
     local area = VoxelArea:new{MinEdge = emin, MaxEdge = emax}
     voxelmanip:get_data(data)
 
-    local sidelen = maxp.x - minp.x + 1
-    local permapdims3d = {x = sidelen, y = sidelen, z = sidelen}
+    local sidelen_x = emax.x - emin.x + 1
+    local sidelen_y = emax.y - emin.y + 1
+    local sidelen_z = emax.z - emin.z + 1
+    local permapdims3d = {x = sidelen_x, y = sidelen_y, z = sidelen_z}
     nobj_terrain = nobj_terrain or minetest.get_perlin_map(np_terrain, permapdims3d)
-    nobj_terrain:get_3d_map_flat(minp, nvals_terrain)
+    nobj_terrain:get_3d_map_flat(emin, nvals_terrain)
 
     local ni = 1
-    for z = minp.z, maxp.z do
-        for y = minp.y, maxp.y do
-            local voxel_index = area:index(minp.x, y, z)
-            for x = minp.x, maxp.x do
+    for z = emin.z, emax.z do
+        for y = emin.y, emax.y do
+            local voxel_index = area:index(emin.x, y, z)
+            for x = emin.x, emax.x do
                 local island_id = 0
                 local best_dist_ratio = 1.0
 
